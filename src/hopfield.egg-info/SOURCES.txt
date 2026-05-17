@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+src/hopfield/__init__.py
+src/hopfield/analysis.py
+src/hopfield/network.py
+src/hopfield/patterns.py
+src/hopfield/visualize.py
+src/hopfield.egg-info/PKG-INFO
+src/hopfield.egg-info/SOURCES.txt
+src/hopfield.egg-info/dependency_links.txt
+src/hopfield.egg-info/top_level.txt
+tests/test_network.py
+tests/test_patterns.py
