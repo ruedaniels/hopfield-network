@@ -57,3 +57,17 @@ def test_single_pattern_recall():
     recalled = net.recall(probe, max_steps=200, rng=rng)
     overlap = float(np.dot(recalled, pattern[0]) / 100)
     assert overlap >= 0.95
+
+def test_five_pattern_integration():
+    rng = np.random.default_rng(42)
+    from hopfield.patterns import random_pattern, add_noise, pattern_overlap
+
+    net = HopfieldNetwork(100)
+    patterns = np.array([random_pattern(100, rng) for _ in range(5)])
+    net.train(patterns)
+
+    for i, pattern in enumerate(patterns):
+        probe = add_noise(pattern, 0.20, rng)
+        recalled = net.recall(probe, max_steps=500, rng=rng)
+        overlap = pattern_overlap(recalled, pattern)
+        assert overlap >= 0.95, f"Pattern {i} failed: overlap was {overlap:.3f}"
