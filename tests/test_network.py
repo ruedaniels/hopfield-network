@@ -36,3 +36,12 @@ def test_accuracy_drops_above_capacity():
     net.train(patterns)
     accuracy = recall_accuracy(net, patterns, noise_ratio=0.20, n_trials=20, rng=rng)
     assert accuracy <= 0.60, f"Expected accuracy to drop above capacity, got {accuracy:.3f}"
+
+def test_train_raises_on_wrong_pattern_length():
+    net = HopfieldNetwork(100)
+    bad_patterns = np.ones((3, 50))
+    try:
+        net.train(bad_patterns)
+        assert False, "Should have raised ValueError"
+    except ValueError:
+        pass
