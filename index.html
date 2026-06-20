@@ -109,7 +109,12 @@
       display: grid;
       grid-template-columns: 1fr 320px;
       gap: 1.5rem;
-      align-items: start;
+      align-items: stretch;
+    }
+
+    .row-2col .panel {
+      display: flex;
+      flex-direction: column;
     }
 
     @media (max-width: 760px) {
@@ -241,9 +246,11 @@
     /* Stored patterns strip */
     .stored-strip {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
-      gap: 0.6rem;
+      grid-template-columns: repeat(5, 1fr);
+      align-content: start;
+      gap: 0.5rem;
       margin-top: 0.4rem;
+      flex: 1;
     }
 
     .stored-thumb {
@@ -255,7 +262,10 @@
       transition: border-color 0.15s;
     }
 
-    .stored-thumb.active { border-color: var(--pink-deep); }
+    .stored-thumb.active {
+      border-color: var(--border);
+      box-shadow: 0 3px 0 0 var(--pink-deep);
+    }
     .stored-thumb canvas { display: block; width: 100%; aspect-ratio: 1; image-rendering: pixelated; }
   </style>
 </head>
@@ -465,10 +475,10 @@ function drawPattern(canvas, state) {
   const ctx = canvas.getContext('2d');
   const img = ctx.createImageData(side, side);
   for (let i = 0; i < state.length; i++) {
-    const v = state[i] > 0 ? 26 : 245;
-    img.data[i*4]   = v === 26 ? 26  : 253;
-    img.data[i*4+1] = v === 26 ? 26  : 220;
-    img.data[i*4+2] = v === 26 ? 26  : 228;
+    const v = state[i] > 0 ? 26 : 255;
+    img.data[i*4]   = v;
+    img.data[i*4+1] = v;
+    img.data[i*4+2] = v;
     img.data[i*4+3] = 255;
   }
   ctx.putImageData(img, 0, 0);
@@ -506,9 +516,10 @@ function drawThumb(canvas, state) {
   const ctx = canvas.getContext('2d');
   const img = ctx.createImageData(side, side);
   for (let i = 0; i < state.length; i++) {
-    img.data[i*4]   = state[i] > 0 ? 26  : 253;
-    img.data[i*4+1] = state[i] > 0 ? 26  : 220;
-    img.data[i*4+2] = state[i] > 0 ? 26  : 228;
+    const v = state[i] > 0 ? 26 : 255;
+    img.data[i*4]   = v;
+    img.data[i*4+1] = v;
+    img.data[i*4+2] = v;
     img.data[i*4+3] = 255;
   }
   ctx.putImageData(img, 0, 0);
