@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hopfield Network Memory Model</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #ffffff;
+      --surface:   #ffffff;
+      --border:    #f4b8c6;
+      --pink-deep: #d6336c;
+      --pink-mid:  #e8638a;
+      --pink-soft: #f4b8c6;
+      --pink-pale: #fdf0f3;
+      --text:      #1a1a1a;
+      --muted:     #6b6b6b;
+      --on:        #1a1a1a;
+      --off:       #ffffff;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      text-align: center;
+      padding: 2.5rem 1rem 1.5rem;
+    }
+
+    header h1 {
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 700;
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      color: #1a1a1a;
+      margin-bottom: 0.4rem;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .app {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 0 1.5rem 3rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.75rem;
+    }
+
+    .controls-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      background: var(--pink-pale);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+    }
+
+    .controls-actions {
+      display: flex;
+      gap: 0.7rem;
+      max-width: 980px;
+      margin: -0.5rem auto 0;
+      padding: 0 1.5rem;
+    }
+
+    .controls-actions .btn { margin-bottom: 0; }
+
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .stats-strip .stat-cell {
+      background: #fff;
+      padding: 0.9rem 0.5rem;
+      text-align: center;
+    }
+
+    .stats-strip .stat-num {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--pink-deep);
+      display: block;
+    }
+
+    .stats-strip .stat-name {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .row-2col {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 760px) {
+      .controls-bar { grid-template-columns: 1fr; }
+      .row-2col { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 1.4rem;
+    }
+
+    .panel-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 1.2rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 2px solid var(--pink-pale);
+    }
+
+    /* Controls */
+    .control-group { margin-bottom: 1.2rem; }
+
+    label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    label span { color: var(--pink-deep); font-weight: 600; }
+
+    input[type=range] {
+      width: 100%;
+      accent-color: var(--pink-deep);
+      cursor: pointer;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 0.7rem;
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      margin-bottom: 0.6rem;
+    }
+
+    .btn:hover { opacity: 0.85; }
+
+    .btn-primary { background: var(--pink-deep); color: #fff; }
+    .btn-secondary { background: var(--pink-pale); color: var(--pink-deep); }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { color: var(--muted); }
+    .stat-value { font-weight: 600; color: var(--pink-deep); }
+
+    /* Center panel */
+    .center-panel { display: flex; flex-direction: column; gap: 1rem; }
+
+    .grids-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .grid-block { text-align: center; }
+
+    .grid-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 0.5rem;
+    }
+
+    canvas.pattern-canvas {
+      border-radius: 4px;
+      border: 2.5px solid var(--pink-soft);
+      width: 100%;
+      aspect-ratio: 1;
+      display: block;
+      image-rendering: pixelated;
+    }
+
+    .overlap-badge {
+      margin-top: 0.4rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--pink-deep);
+      min-height: 1.1rem;
+    }
+
+    /* Energy graph */
+    canvas#energyCanvas {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      display: block;
+    }
+
+    .status-bar {
+      background: var(--pink-pale);
+      border-radius: 8px;
+      padding: 0.5rem 0.8rem;
+      font-size: 0.8rem;
+      color: var(--pink-deep);
+      font-weight: 500;
+      min-height: 2.2rem;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Stored patterns strip */
+    .stored-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+      gap: 0.6rem;
+      margin-top: 0.4rem;
+    }
+
+    .stored-thumb {
+      position: relative;
+      cursor: pointer;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2.5px solid var(--border);
+      transition: border-color 0.15s;
+    }
+
+    .stored-thumb.active { border-color: var(--pink-deep); }
+    .stored-thumb canvas { display: block; width: 100%; aspect-ratio: 1; image-rendering: pixelated; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Hopfield Network Memory Model</h1>
+  <p>Store binary patterns as energy minima — then watch the network recover them from noise.</p>
+</header>
+
+<div class="app">
+
+  <!-- Controls bar -->
+  <div class="controls-bar">
+    <div class="control-group" style="margin-bottom:0">
+      <label>Patterns stored <span id="pVal">5</span></label>
+      <input type="range" id="numPatterns" min="1" max="12" value="5" />
+    </div>
+    <div class="control-group" style="margin-bottom:0">
+      <label>Noise level <span id="nVal">20%</span></label>
+      <input type="range" id="noiseLevel" min="0" max="50" value="20" />
+    </div>
+    <div class="control-group" style="margin-bottom:0">
+      <label>Network size <span id="sVal">100</span> neurons</label>
+      <input type="range" id="netSize" min="25" max="196" step="25" value="100" />
+    </div>
+  </div>
+
+  <div class="controls-actions">
+    <button class="btn btn-primary" id="btnRecall" style="flex:2">Recall Pattern</button>
+    <button class="btn btn-secondary" id="btnRetrain" style="flex:1">Retrain Network</button>
+    <button class="btn btn-secondary" id="btnRandom" style="flex:1">Random Probe</button>
+  </div>
+
+  <!-- Stats strip -->
+  <div class="stats-strip">
+    <div class="stat-cell"><span class="stat-num" id="statN">100</span><span class="stat-name">Neurons</span></div>
+    <div class="stat-cell"><span class="stat-num" id="statCap">~13</span><span class="stat-name">Capacity</span></div>
+    <div class="stat-cell"><span class="stat-num" id="statP">5</span><span class="stat-name">Patterns</span></div>
+    <div class="stat-cell"><span class="stat-num" id="statOverlap">—</span><span class="stat-name">Overlap</span></div>
+    <div class="stat-cell"><span class="stat-num" id="statSteps">—</span><span class="stat-name">Steps</span></div>
+  </div>
+
+  <!-- Hero: Pattern Recall -->
+  <div class="panel">
+    <div class="panel-title">Pattern Recall</div>
+    <div class="grids-row">
+      <div class="grid-block">
+        <div class="grid-label">Original</div>
+        <canvas class="pattern-canvas" id="cvOrig"></canvas>
+        <div class="overlap-badge" id="badgeOrig"></div>
+      </div>
+      <div class="grid-block">
+        <div class="grid-label">Noisy Probe</div>
+        <canvas class="pattern-canvas" id="cvNoisy"></canvas>
+        <div class="overlap-badge" id="badgeNoisy"></div>
+      </div>
+      <div class="grid-block">
+        <div class="grid-label">Recalled</div>
+        <canvas class="pattern-canvas" id="cvRecalled"></canvas>
+        <div class="overlap-badge" id="badgeRecalled"></div>
+      </div>
+    </div>
+    <div class="status-bar" id="statusBar" style="margin-top:1.25rem">Train the network to begin.</div>
+  </div>
+
+  <!-- Energy + Stored patterns side by side -->
+  <div class="row-2col">
+    <div class="panel">
+      <div class="panel-title">Energy Convergence</div>
+      <canvas id="energyCanvas" height="160"></canvas>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Stored Patterns</div>
+      <div class="stored-strip" id="storedStrip"></div>
+    </div>
+  </div>
+
+  <!-- Theory -->
+  <div class="row-2col">
+    <div class="panel">
+      <div class="panel-title">How It Works</div>
+      <p style="font-size:0.88rem;color:var(--muted);line-height:1.75;margin-bottom:1rem">
+        A Hopfield Network stores patterns as <strong style="color:var(--text)">stable energy minima</strong>. Given a noisy or partial input, neurons update asynchronously until the network settles into the nearest stored memory — recovering the original from corruption.
+      </p>
+      <p style="font-size:0.88rem;color:var(--muted);line-height:1.75">
+        Weights are set by <strong style="color:var(--text)">Hebbian learning</strong>: neurons that fire together wire together. The energy function E = −½ sᵀWs decreases monotonically at every update, guaranteeing convergence. Theoretical capacity is <strong style="color:var(--text)">≈ 0.138 × N</strong> patterns — beyond this, spurious attractors appear and recall degrades.
+      </p>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Try This</div>
+      <p style="font-size:0.85rem;color:var(--muted);line-height:1.9">
+        <strong style="color:var(--text)">1.</strong> Retrain to store new random patterns.<br>
+        <strong style="color:var(--text)">2.</strong> Push noise to 40%+ and recall — watch it still recover.<br>
+        <strong style="color:var(--text)">3.</strong> Exceed capacity (~13 for 100 neurons) and watch retrieval break down.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── Hopfield Network ────────────────────────────────────────────────────────
+
+class HopfieldNetwork {
+  constructor(n) {
+    this.n = n;
+    this.W = new Float64Array(n * n);
+  }
+
+  train(patterns) {
+    const n = this.n;
+    this.W.fill(0);
+    for (const p of patterns) {
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          if (i !== j) this.W[i * n + j] += p[i] * p[j];
+        }
+      }
+    }
+    for (let i = 0; i < n * n; i++) this.W[i] /= n;
+  }
+
+  recall(probe, maxSteps = 500) {
+    const n = this.n;
+    const s = new Float64Array(probe);
+    const energyHistory = [];
+    for (let step = 0; step < maxSteps; step++) {
+      let changed = false;
+      // async random order
+      const order = Array.from({length: n}, (_, i) => i).sort(() => Math.random() - 0.5);
+      for (const i of order) {
+        let h = 0;
+        for (let j = 0; j < n; j++) h += this.W[i * n + j] * s[j];
+        const newVal = h >= 0 ? 1 : -1;
+        if (newVal !== s[i]) { s[i] = newVal; changed = true; }
+      }
+      energyHistory.push(this.energy(s));
+      if (!changed) break;
+    }
+    return { state: s, energyHistory };
+  }
+
+  energy(s) {
+    const n = this.n;
+    let e = 0;
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++)
+        e -= 0.5 * this.W[i * n + j] * s[i] * s[j];
+    return e;
+  }
+}
+
+function randomPattern(n, rng) {
+  return Float64Array.from({length: n}, () => (rng() < 0.5 ? 1 : -1));
+}
+
+function addNoise(pattern, ratio, rng) {
+  return Float64Array.from(pattern, v => rng() < ratio ? -v : v);
+}
+
+function overlap(a, b) {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+  return s / a.length;
+}
+
+// ─── State ───────────────────────────────────────────────────────────────────
+
+let rng = () => Math.random();
+let N = 100, P = 5, noise = 0.20;
+let net, patterns = [], selectedIdx = 0;
+let lastRecalled = null, lastEnergy = [];
+
+// ─── DOM refs ────────────────────────────────────────────────────────────────
+
+const sliderP     = document.getElementById('numPatterns');
+const sliderN     = document.getElementById('noiseLevel');
+const sliderSize  = document.getElementById('netSize');
+const pVal        = document.getElementById('pVal');
+const nVal        = document.getElementById('nVal');
+const sVal        = document.getElementById('sVal');
+const btnRecall   = document.getElementById('btnRecall');
+const btnRetrain  = document.getElementById('btnRetrain');
+const btnRandom   = document.getElementById('btnRandom');
+const statusBar   = document.getElementById('statusBar');
+const storedStrip = document.getElementById('storedStrip');
+const cvOrig      = document.getElementById('cvOrig');
+const cvNoisy     = document.getElementById('cvNoisy');
+const cvRecalled  = document.getElementById('cvRecalled');
+const badgeOrig   = document.getElementById('badgeOrig');
+const badgeNoisy  = document.getElementById('badgeNoisy');
+const badgeRecalled = document.getElementById('badgeRecalled');
+const energyCanvas  = document.getElementById('energyCanvas');
+const statN    = document.getElementById('statN');
+const statCap  = document.getElementById('statCap');
+const statP    = document.getElementById('statP');
+const statOverlap = document.getElementById('statOverlap');
+const statSteps   = document.getElementById('statSteps');
+
+// ─── Drawing ─────────────────────────────────────────────────────────────────
+
+function drawPattern(canvas, state) {
+  const side = Math.round(Math.sqrt(state.length));
+  canvas.width = side; canvas.height = side;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(side, side);
+  for (let i = 0; i < state.length; i++) {
+    const v = state[i] > 0 ? 26 : 245;
+    img.data[i*4]   = v === 26 ? 26  : 253;
+    img.data[i*4+1] = v === 26 ? 26  : 220;
+    img.data[i*4+2] = v === 26 ? 26  : 228;
+    img.data[i*4+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function drawEnergy(history) {
+  const ctx = energyCanvas.getContext('2d');
+  const W = energyCanvas.offsetWidth || 400;
+  const H = 140;
+  energyCanvas.width = W; energyCanvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+  if (!history.length) return;
+  const min = Math.min(...history), max = Math.max(...history);
+  const pad = 20;
+  ctx.strokeStyle = '#c9536a';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  history.forEach((e, i) => {
+    const x = pad + (i / (history.length - 1 || 1)) * (W - 2*pad);
+    const y = pad + (1 - (e - min) / (max - min + 0.001)) * (H - 2*pad);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  // axis labels
+  ctx.fillStyle = '#9a7880';
+  ctx.font = '10px DM Sans';
+  ctx.fillText(`${min.toFixed(0)}`, 2, H - pad + 4);
+  ctx.fillText(`${max.toFixed(0)}`, 2, pad + 4);
+  ctx.fillText('steps →', W - 55, H - 4);
+}
+
+function drawThumb(canvas, state) {
+  const side = Math.round(Math.sqrt(state.length));
+  canvas.width = side; canvas.height = side;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(side, side);
+  for (let i = 0; i < state.length; i++) {
+    img.data[i*4]   = state[i] > 0 ? 26  : 253;
+    img.data[i*4+1] = state[i] > 0 ? 26  : 220;
+    img.data[i*4+2] = state[i] > 0 ? 26  : 228;
+    img.data[i*4+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+// ─── Core actions ─────────────────────────────────────────────────────────────
+
+function retrain() {
+  N = parseInt(sliderSize.value);
+  P = parseInt(sliderP.value);
+  net = new HopfieldNetwork(N);
+  patterns = Array.from({length: P}, () => randomPattern(N, rng));
+  net.train(patterns);
+  selectedIdx = 0;
+  lastRecalled = null; lastEnergy = [];
+  drawEnergy([]);
+
+  // clear canvases
+  [cvOrig, cvNoisy, cvRecalled].forEach(c => {
+    const ctx = c.getContext('2d');
+    c.width = 10; c.height = 10;
+    ctx.fillStyle = '#fde8ed'; ctx.fillRect(0,0,10,10);
+  });
+  badgeOrig.textContent = '';
+  badgeNoisy.textContent = '';
+  badgeRecalled.textContent = '';
+  statOverlap.textContent = '—';
+  statSteps.textContent = '—';
+
+  // update stats
+  statN.textContent = N;
+  statCap.textContent = `~${Math.floor(0.138 * N)}`;
+  statP.textContent = P;
+
+  // rebuild stored strip
+  storedStrip.innerHTML = '';
+  patterns.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'stored-thumb' + (i === 0 ? ' active' : '');
+    const cv = document.createElement('canvas');
+    drawThumb(cv, p);
+    div.appendChild(cv);
+    div.addEventListener('click', () => {
+      selectedIdx = i;
+      document.querySelectorAll('.stored-thumb').forEach((el, j) => {
+        el.classList.toggle('active', j === i);
+      });
+      statusBar.textContent = `Pattern ${i+1} selected. Hit Recall to probe it.`;
+    });
+    storedStrip.appendChild(div);
+  });
+
+  const cap = Math.floor(0.138 * N);
+  if (P > cap) {
+    statusBar.textContent = `⚠️ ${P} patterns exceeds capacity (~${cap}). Recall may fail.`;
+  } else {
+    statusBar.textContent = `Network trained on ${P} patterns. Select one and recall.`;
+  }
+}
+
+function doRecall() {
+  if (!net) { statusBar.textContent = 'Train the network first.'; return; }
+  noise = parseInt(sliderN.value) / 100;
+  const orig = patterns[selectedIdx];
+  const probe = addNoise(orig, noise, rng);
+  const { state: recalled, energyHistory } = net.recall(probe, 500);
+  lastRecalled = recalled; lastEnergy = energyHistory;
+
+  drawPattern(cvOrig, orig);
+  drawPattern(cvNoisy, probe);
+  drawPattern(cvRecalled, recalled);
+  drawEnergy(energyHistory);
+
+  const ov = overlap(recalled, orig);
+  const noiseOverlap = overlap(probe, orig);
+  badgeOrig.textContent = '';
+  badgeNoisy.textContent = `overlap ${noiseOverlap.toFixed(2)}`;
+  badgeRecalled.textContent = `overlap ${ov.toFixed(2)}`;
+  statOverlap.textContent = ov.toFixed(3);
+  statSteps.textContent = energyHistory.length;
+
+  if (ov > 0.95) statusBar.textContent = `✓ Perfect recall — ${(noise*100).toFixed(0)}% noise corrected in ${energyHistory.length} steps.`;
+  else if (ov > 0.7) statusBar.textContent = `~ Partial recall — overlap ${ov.toFixed(2)}. Try less noise or fewer patterns.`;
+  else statusBar.textContent = `✗ Recall failed — spurious attractor. Try reducing patterns or noise.`;
+}
+
+function doRandom() {
+  if (!net) { statusBar.textContent = 'Train the network first.'; return; }
+  selectedIdx = Math.floor(Math.random() * patterns.length);
+  document.querySelectorAll('.stored-thumb').forEach((el, j) => {
+    el.classList.toggle('active', j === selectedIdx);
+  });
+  doRecall();
+}
+
+// ─── Slider listeners ────────────────────────────────────────────────────────
+
+sliderP.addEventListener('input', () => { pVal.textContent = sliderP.value; });
+sliderN.addEventListener('input', () => { nVal.textContent = sliderN.value + '%'; });
+sliderSize.addEventListener('input', () => { sVal.textContent = sliderSize.value; });
+
+btnRetrain.addEventListener('click', retrain);
+btnRecall.addEventListener('click', doRecall);
+btnRandom.addEventListener('click', doRandom);
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+retrain();
+</script>
+</body>
+</html>
